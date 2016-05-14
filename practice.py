@@ -3,6 +3,7 @@ from xml.etree import ElementTree
 
 loopFlag=1
 xmlFD=-1
+
 Lostthings=None
 def printMenu():
     print("\nWelcome! Lostthings Manager Program (xml version)") 
@@ -17,11 +18,11 @@ def launcherFunction(menu):
     elif menu == 'L':
         PrintLostList(["fdPrdtNm",])
 def LoadXMLFromFile():
-    #filename=str(input("please input file name to load:"))
+    filename=str(input("please input file name to load:"))
     global xmlFD
 
     try:
-        xmlFD="Lostthings.xml"
+        xmlFD=open(filename,"rb")
     except IOError:
         print("invalid file name or path")
         return None
@@ -52,7 +53,7 @@ def PrintLostList(tags):
                              if last.nodeName=="item":
                                  itl = last.childNodes
                                  for it in itl:
-                                     print(it.lastChild.nodeValue)
+                                     print(it.firstChild.nodeValue)
                                  
 
                              
