@@ -35,23 +35,37 @@ mailcount=0
 # 네이버 OpenAPI 접속 정보 information
 server = "openapi.tago.go.kr"
 def FileSave():
+    from time import localtime,strftime
+    date=strftime("%Y-%m-%d %I:%M",localtime())
     global mailcount,busnumber
-    routeid = SearchBus(busnumber)
     
+    
+
+    print("최근 검색한 버스노선경로 로그 출력")
+    routeid = SearchBus(busnumber)
+    routedic = Printroute(routeid["routeID"])
     file=open('BusLog.txt','a')
-   
+    file.write("검색날짜")
+    file.write(date)   
     file.write("메일보낸횟수: ")
     file.write('%d' %(mailcount))
     file.write('\n')
-    #file.write('%s', %(SearchBus(busnumber)))
+    file.write(str(routedic))
+   
     file.write('\n')
-    file.write(etc(routeid))
+    file.write(str(etc(routeid)))
     file.write('\n')
     file.close()
     
        
 def EraseFile():#c언어로 구현
-    pass
+    import os
+    import glob
+    files=glob.glob("*")#파일명 리스트를 배열로 확보함.
+    for f in files:
+        if f == 'BusLog.txt':
+                os.remove(f)
+        print ("file name["+f+"]")
      
 def printMenu():#입력 매뉴얼 알려주는 함수
     print("\nWelcome! BusLine Manager Program (xml version)") 
@@ -60,7 +74,7 @@ def printMenu():#입력 매뉴얼 알려주는 함수
     print("Quit menu: q")
     print("Send Mail: M")
     print("Erase File :E")
-    print("Save Log function: f")
+    print("Save Log function,Use this fun After Searching Bus num: f")
     print("==================")
 
 def etc(routeid):
@@ -106,7 +120,6 @@ def launcherFunction(menu):# 명령어 입력하여 실질적으로 수행처리
     elif menu == 'E':
         Key=str(input("file내용을 삭제 하시겠습니까? 이전에 봤던 모든기록이 지워집니다.(y,n)"))
         if(Key=='y' or Key=='Y'):
-            pass
             EraseFile()
         elif(Key=='n' or Key=='N'):
             printMenu()
