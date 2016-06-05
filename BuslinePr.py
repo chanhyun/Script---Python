@@ -4,7 +4,7 @@ Created on Mon May 23 12:09:50 2016
 
 @author: chanhyun
 """
-
+#c언어 연동만 하면 끝인데..
 # -*- coding: utf-8 -*-
 """
 Created on Thu May 19 16:23:30 2016
@@ -31,10 +31,11 @@ regKey = 'PWIFTthzdz6Il8%2FAJ%2FASVFqKDtEAYoXdpKP6%2Bvq%2FLINz9URHz6rA4OQ64EOSgF
 uri=None
 Citycode=None
 mailcount=0
-
+busnumber=None
+comment=None
 # 네이버 OpenAPI 접속 정보 information
 server = "openapi.tago.go.kr"
-def FileSave():
+def FileSave(busnum, citycode, comment):
     from time import localtime,strftime
     date=strftime("%Y-%m-%d %I:%M",localtime())
     global mailcount,busnumber
@@ -42,18 +43,25 @@ def FileSave():
     
 
     print("최근 검색한 버스노선경로 로그 출력")
-    routeid = SearchBus(busnumber)
     routedic = Printroute(routeid["routeID"])
+    
     file=open('BusLog.txt','a')
     file.write("검색날짜")
     file.write(date)   
     file.write("메일보낸횟수: ")
     file.write('%d' %(mailcount))
     file.write('\n')
-    file.write(str(routedic))
-   
+    city = None
+    file.write(busnum+"번 버스")
+    #citydic = {}
+    #citydic = citycode_parse()
+    #file.write('\n')
+    #file.write(str(citydic))
     file.write('\n')
-    file.write(str(etc(routeid)))
+    file.write(str(comment))
+    file.write('\n')
+    file.write(str(routedic))
+    
     file.write('\n')
     file.close()
     
@@ -75,6 +83,7 @@ def printMenu():#입력 매뉴얼 알려주는 함수
     print("Send Mail: M")
     print("Erase File :E")
     print("Save Log function,Use this fun After Searching Bus num: f")
+    print("Where is your City: C ")
     print("==================")
 
 def etc(routeid):
@@ -91,18 +100,55 @@ def etc(routeid):
             if (int(NowBusdic[now]) < position) and (int(NowBusdic[now]) > maxpos): #버스가 정류장보다 앞에있고 maxpos보다 더 큰지
                 maxpos = int(NowBusdic[now]) 
         if position-maxpos > 0:
-            result = (str(position-maxpos) + "정류장 남았습니다.")
+            result = ( localposition +"까지 " +str(position-maxpos) + "정류장 남았습니다.")
             
         else:
             result = "다시 검색해주세요"
         return result #현재위치 - 버스위치 = 남은 정류장 수
     except Exception: # 예외처리 : 버스번호 자체가 없거나 현재 움직이는 버스가 없다.
         return False
+        
+def userURIBuilder(server,service,**user):
+    str = "https://" + server + "/openapi/service/" + service + "?"
+    for key in user.keys():
+        str += key + "=" + user[key] + "&"
+    return str
 
+def citycode_parse():
+    global Citycode
+    if conn == None :
+        connectOpenAPIServer()
+        
+    uri = userURIBuilder(server, "BusRouteInfoInqireService/getCtyCodeList",ServiceKey=regKey,pageSize="999",pageNo="1",startPage="1")#server=server
     
+    conn.request("GET", uri)
+    
+    req = conn.getresponse()#응답시키
+    print (req.status)
+    if int(req.status) == 200 :
+        print("Bus data downloading complete!")
+        return extract_citycode(req.read()) #버스번호 사전화 ,request가 현재 url에있는 정보들 다 뽑아옴.
+    else:
+        print ("OpenAPI request has been failed!! please retry")
+        return None
+        
+def extract_citycode(strXml):
+    tree = ElementTree.fromstring(strXml)
+    #print (strXml)
+    itemElements = tree.getiterator("item")  # return list type
+    citycode = {}
+    #print(itemElements)
+    for item in itemElements:
+        global citycode
+        sname = item.find("sname")
+        code = item.find("code")        
+        #print(10000000)
+        if len(sname.text) > 0 :
+          citycode[sname.text] = code.text
+    return citycode
     
 def launcherFunction(menu):# 명령어 입력하여 실질적으로 수행처리하는 부분
-    global Citycode
+    global Citycode,busnumber,comment,routeid
     global busnumber
     if menu == 's' or menu == 'S':
         print("지역번호입력. 대전은 25번, 대구는 22번, 인천은 23번, 울산은 26번 제주도 39번 입니다.")
@@ -110,9 +156,12 @@ def launcherFunction(menu):# 명령어 입력하여 실질적으로 수행처리
         Citycode=str(input("input Citycode please "))
         busnumber=str(input("input BusNumber to search for Information "))#원하는 버스 번호 얻어오고
         routeid = SearchBus(busnumber)#Search함수에 5번 넣고
-        print (etc(routeid))
+        comment = etc(routeid)
+        print(comment)
+        
     elif menu == 'f' or menu == 'F':
-        FileSave()
+        global Citycode,busnumber,comment
+        FileSave(busnumber,Citycode,comment)
     elif menu == 'q' or menu == 'Q':
         Quitprogram()
     elif menu == 'M' or menu == 'm':
@@ -127,6 +176,10 @@ def launcherFunction(menu):# 명령어 입력하여 실질적으로 수행처리
             launcherFunction(menuKey)
         else:
             print("다시누르세요 y or n")
+    elif menu == 'c' or menu =='C':
+        citydic = {}        
+        citydic = citycode_parse()
+        print_busstation(citydic)
 def SearchBus(busnumber): #버스번호로 검색
     global Citycode
     if conn == None :
@@ -175,11 +228,7 @@ def connectOpenAPIServer():
     global conn, server
     conn = HTTPConnection(server)#http://www.(data.go.kr) ()는 "openapi.tago.go.kr"
 
-def userURIBuilder(server,service,**user):
-    str = "https://" + server + "/openapi/service/" + service + "?"
-    for key in user.keys():
-        str += key + "=" + user[key] + "&"
-    return str            
+            
 def Quitprogram():
     global loopFlag
     loopFlag = 0
