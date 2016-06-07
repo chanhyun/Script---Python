@@ -12,11 +12,13 @@ Created on Thu May 19 16:23:30 2016
 @author: Administrator
 """
 
+
+
 from xml.dom.minidom import parse,parseString
 from xml.etree import ElementTree
 
 import urllib.request
-
+import spam
 from http.client import HTTPConnection
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import smtplib
@@ -53,10 +55,7 @@ def FileSave(busnum, citycode, comment):
     file.write('\n')
     city = None
     file.write(busnum+"번 버스")
-    #citydic = {}
-    #citydic = citycode_parse()
-    #file.write('\n')
-    #file.write(str(citydic))
+
     file.write('\n')
     file.write(str(comment))
     file.write('\n')
@@ -65,7 +64,29 @@ def FileSave(busnum, citycode, comment):
     file.write('\n')
     file.close()
     
-       
+def CFileSave(busnum, citycode, comment):
+    #import setup
+    import spam
+    from time import localtime,strftime
+    global mailcount,busnumber
+    date=strftime("%Y-%m-%d %I:%M",localtime())
+    print("최근 검색한 버스노선경로 로그 출력")
+    routedic = Printroute(routeid["routeID"])
+    spam.wlog(str(routedic))
+    #spam.wlog('1111')
+    
+   
+  
+   
+    
+    #spam.wlog("검색날짜"),date,"메일보낸횟수:",'%d' %(mailcount),"\n"
+    #         ,busnum+"번 버스",'\n',str(comment),'\n',str(routedic))
+   #spam.wlog(date)
+   
+  
+
+   
+
 def EraseFile():#c언어로 구현
     import os
     import glob
@@ -73,7 +94,7 @@ def EraseFile():#c언어로 구현
     for f in files:
         if f == 'BusLog.txt':
                 os.remove(f)
-        print ("file name["+f+"]")
+        #print ("file name["+f+"]")
      
 def printMenu():#입력 매뉴얼 알려주는 함수
     print("\nWelcome! BusLine Manager Program (xml version)") 
@@ -84,6 +105,7 @@ def printMenu():#입력 매뉴얼 알려주는 함수
     print("Erase File :E")
     print("Save Log function,Use this fun After Searching Bus num: f")
     print("Where is your City: C ")
+    print("python to CFilelog: P")
     print("==================")
 
 def etc(routeid):
@@ -164,6 +186,8 @@ def launcherFunction(menu):# 명령어 입력하여 실질적으로 수행처리
         FileSave(busnumber,Citycode,comment)
     elif menu == 'q' or menu == 'Q':
         Quitprogram()
+    elif menu == 'p' or menu == 'P':
+        CFileSave(busnumber,Citycode,comment)
     elif menu == 'M' or menu == 'm':
         SendMail()
     elif menu == 'E':
@@ -357,6 +381,7 @@ def SendMail():
     print ("Mail sending complete!!!")
 
 while(loopFlag>0):#시작부분코드
+    
     printMenu()
     menuKey=str(input('select menu:'))
 
