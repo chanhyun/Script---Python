@@ -35,6 +35,7 @@ Citycode=None
 mailcount=0
 busnumber=None
 comment=None
+#routeid = {}
 # 네이버 OpenAPI 접속 정보 information
 server = "openapi.tago.go.kr"
 def FileSave(busnum, citycode, comment):
@@ -48,8 +49,10 @@ def FileSave(busnum, citycode, comment):
     routedic = Printroute(routeid["routeID"])
     
     file=open('BusLog.txt','a')
-    file.write("검색날짜")
-    file.write(date)   
+    file.write('\n')
+    file.write("검색날짜: ")
+    file.write(date)
+    file.write('\n')
     file.write("메일보낸횟수: ")
     file.write('%d' %(mailcount))
     file.write('\n')
@@ -71,18 +74,18 @@ def CFileSave(busnum, citycode, comment):
     global mailcount,busnumber
     date=strftime("%Y-%m-%d %I:%M",localtime())
     print("최근 검색한 버스노선경로 로그 출력")
+    spam.wlog('\n')
     routedic = Printroute(routeid["routeID"])
+    spam.wlog("검색날짜: ")
+    spam.wlog(date)
+    spam.wlog('\n')
+    spam.wlog(busnum+"번버스")
+    spam.wlog('\n')
+    spam.wlog(str(comment))
+    spam.wlog('\n')
     spam.wlog(str(routedic))
-    #spam.wlog('1111')
+    spam.wlog('\n')
     
-   
-  
-   
-    
-    #spam.wlog("검색날짜"),date,"메일보낸횟수:",'%d' %(mailcount),"\n"
-    #         ,busnum+"번 버스",'\n',str(comment),'\n',str(routedic))
-   #spam.wlog(date)
-   
   
 
    
@@ -103,6 +106,8 @@ def printMenu():#입력 매뉴얼 알려주는 함수
     print("Quit menu: q")
     print("Send Mail: M")
     print("Erase File :E")
+    print("Add Favorite Bus station: a")
+    print("Load Favorite Bus station:l,L")
     print("Save Log function,Use this fun After Searching Bus num: f")
     print("Where is your City: C ")
     print("python to CFilelog: P")
@@ -189,7 +194,12 @@ def launcherFunction(menu):# 명령어 입력하여 실질적으로 수행처리
     elif menu == 'p' or menu == 'P':
         CFileSave(busnumber,Citycode,comment)
     elif menu == 'M' or menu == 'm':
+        
         SendMail()
+    elif menu == 'a' or menu =='A':
+        favorite_add()
+    elif menu == 'l' or menu == 'L':
+        print_favorite_list()
     elif menu == 'E':
         Key=str(input("file내용을 삭제 하시겠습니까? 이전에 봤던 모든기록이 지워집니다.(y,n)"))
         if(Key=='y' or Key=='Y'):
@@ -296,7 +306,109 @@ def NowBus(routeid): #현재 움직이는 버스 위치
         print ("OpenAPI request has been failed!! please retry")
         return None
 
+class Favorite_list:
+    def __init__(self,citycode, busnum, routeId, station):
+        self.citycode = citycode
+        self.busnum = busnum
+        self.routeId = routeId
+        self.station = station
+    def getBusnum(self):
+        return self.busnum
+    def getCitycode(self):
+        return self.citycode
+    def getStation(self):
+        return self.station
+    def getRouteid(self):
+        return self.routeId
 
+def favorite_save(new_favorite):
+    import json
+    file = open("favorite.txt",'a')
+    file.close()
+    
+    file = open("favorite.txt",'r')
+    save_data = file.read()
+    favorite_list = []
+    if (save_data!=""):
+        data = json.loads(save_data)
+        for name in data:
+            favorite = Favorite_list(data[name]['citycode'],data[name]['busnum'],data[name]['routeId'],name )
+            favorite_list.append(favorite)
+        file.close()
+
+    file = open("favorite.txt",'w')
+    file.write("{\n")    
+    for node in favorite_list:
+        file.write("\t\"" + node.station + "\" : {\"citycode\" : \"" + node.citycode + "\", \"busnum\" : \""+node.busnum+"\", \"routeId\" : \""+node.routeId+"\", \"routeId\" : \""+node.routeId+"\"},\n")
+    file.write("\t\"" + new_favorite.station + "\" : {\"citycode\" : \"" + new_favorite.citycode + "\", \"busnum\" : \""+new_favorite.busnum+"\", \"routeId\" : \""+new_favorite.routeId+"\", \"routeId\" : \""+new_favorite.routeId+"\"}\n")
+    file.write("}")
+    file.close()
+    print("Save complet!")
+    #file=open("favorite.txt",'a')
+    
+    
+def favorite_load():
+    import json
+    file = open("favorite.txt",'r')
+    save_data = file.read()
+    data = json.loads(save_data)
+    favorite_list = []
+    for name in data:
+        favorite = Favorite_list(data[name]['citycode'],data[name]['busnum'],data[name]['routeId'],name )
+        favorite_list.append(favorite)
+    file.close()
+    return favorite_list
+    
+def print_favorite_list():
+    global Citycode
+    data = []
+    data = favorite_load()
+    for node in data:
+        Citycode = node.citycode
+        result = favorite_etc(node.routeId,node.station)
+        if result:
+            print(node.busnum+"번 버스가 " +result)
+
+
+def favorite_etc(routeid,localposition):
+    try:         
+        routedic = Printroute(routeid)#routeid = DJB3030004ND,5번의 전체노선 코드번호
+        NowBusdic = NowBus(routeid)
+        position = int(routedic[localposition])
+        maxpos = 0 # 내가 있는 정류장보다 앞에있는 버스중에 제일 가까이 있는 버스           
+        for now in NowBusdic: 
+            if maxpos == 0: #버스정류장이 0이면 제일 먼저거 넣음
+                maxpos = int(NowBusdic[now])
+            if (int(NowBusdic[now]) < position) and (int(NowBusdic[now]) > maxpos): #버스가 정류장보다 앞에있고 maxpos보다 더 큰지
+                maxpos = int(NowBusdic[now]) 
+        if position-maxpos > 0:
+            result = ( localposition +"까지 " +str(position-maxpos) + "정류장 남았습니다.")
+            
+        else:
+            result = False
+        return result #현재위치 - 버스위치 = 남은 정류장 수
+    except Exception: # 예외처리 : 버스번호 자체가 없거나 현재 움직이는 버스가 없다.
+        return False
+
+def favorite_add():
+    global Citycode
+    busstation = {}    
+    busstation = citycode_parse()
+    print_busstation(busstation)
+    Citycode = str(input("input citycode : "))
+    busnum = str(input("input busnumber : "))
+
+    routeid = {}
+    routeid = SearchBus(busnum)
+
+    routedic={}
+    routedic = Printroute(routeid["routeID"])
+
+    print_busstation(routedic)
+    station = input("input your bus station : ")
+    new_node = Favorite_list(Citycode,busnum,routeid["routeID"],station)
+    favorite_save(new_node)
+    
 def MakeHtmlDoc(Buslinelist):
     from xml.dom.minidom import getDOMImplementation
     impl = getDOMImplementation()
